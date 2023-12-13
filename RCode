@@ -1,0 +1,74 @@
+#Load data and set working directory
+install.packages("tidyverse")
+
+library(tidyverse)
+
+Average_Dailyl_TTS_Hours <- read.csv("Listen Projections TTS_Hours Raw Data 2023-24.csv", header=TRUE, stringsAsFactors=FALSE)
+
+#Install cleaning and forecasting packages:
+install.packages("stringr")
+install.packages("forecast")
+install.packages("ggplot2")
+install.packages("dplyr")
+install.packages("aTSA")
+
+#Load packages:
+library("stringr")
+library("forecast")
+library("ggplot2")
+library("dplyr")
+library("aTSA")
+
+#Changing the datatype of active users column from string to numeric values:
+Average_Dailyl_TTS_Hours$TTS_Hours=as.numeric(Average_Dailyl_TTS_Hours$TTS_Hours)
+
+#Changing the date column from string to the date format:
+Average_Dailyl_TTS_Hours$Date=as.Date(Average_Dailyl_TTS_Hours$Date,format="%m/%d/%y")
+
+#Plotting the data in standard R chart:
+plot(x=Average_Dailyl_TTS_Hours[1:38,"Date"],y=Average_Dailyl_TTS_Hours[1:38,"TTS_Hours"],type="l")
+
+#Isolating the date column:
+my_series=Average_Dailyl_TTS_Hours$TTS_Hours[1:38]
+
+#Checking if the series is stationary:
+# The null hypothesis: x is non stationary. If p-value in adf test (not adf difference) is greater then 0.05 we  don't 
+#reject null hypothesis.  
+adf.test(my_series)
+
+#Making the time series data stationary and use the same hypothesis. 
+adf.test(diff(my_series))
+plot(diff(my_series),type="l")
+
+#Trying an auto.arima function: This does not take in to context seasonality so we do not use it. 
+#We don't like it. See plot for more evidence. 
+auto.arima(my_series)
+model=Arima(my_series,order=c(0,1,0))
+plot(forecast::forecast(model,h=50))
+
+#We will try fitting an ARIMA model manually using Box Jenkins method  by identifying ARIMA (p, d, q)
+#p is for the AR coefficient, q is for MA Coef. d is how many difference we take.
+acf(diff(my_series,12)) #What ever is below the blue line is not significant. Our blue line is very high because 
+#Of the sample size
+
+pacf(diff(my_series,12)) #Whatever is below the blue line is not significant.
+
+Model=Arima(my_series,seasonal=list(order=c(1,1,0),period=12),include.drift=TRUE)
+summary(Model)
+forecast::forecast(Model,50)
+plot(forecast::forecast(Model,8))
+
+Model2=Arima(my_series,seasonal=list(order=c(1,0,0),period=12),include.drift=TRUE)
+summary(Model2)
+forecast::forecast(Model2,50)
+plot(forecast::forecast(Model2,8))
+
+Model3=Arima(my_series,seasonal=list(order=c(0,1,0),period=12),include.drift=TRUE)
+summary(Model3)
+forecast::forecast(Model3,50)
+plot(forecast::forecast(Model3,8))
+
+Model4=Arima(my_series,seasonal=list(order=c(0,0,1),period=12),include.drift=TRUE)
+summary(Model4)
+forecast::forecast(Model4,50)
+plot(forecast::forecast(Model4,8))
